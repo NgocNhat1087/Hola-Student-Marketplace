@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { User } from '../types';
-import { authApi, clearToken, getToken, setToken } from '../services/api';
+import { authApi, clearToken, getToken, profileApi, setToken } from '../services/api';
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  completeOAuthLogin: (token: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -31,6 +32,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await authApi.login(email, password);
       setToken(result.token);
       setUser(result.user);
+    },
+    async completeOAuthLogin(token) {
+      setToken(token);
+      try {
+        const profile = await profileApi.getMine();
+        setUser({ id: profile.userId, email: '', role: 'USER', verified: true });
+      } catch (error) {
+        clearToken();
+        setUser(null);
+        throw error;
+      }
     },
     async logout() {
       try { await authApi.logout(); } finally { clearToken(); setUser(null); }

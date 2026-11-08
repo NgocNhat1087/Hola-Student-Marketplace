@@ -2,8 +2,7 @@ package com.hsm.security;
 
 import com.hsm.account.entity.User;
 import com.hsm.account.entity.UserProfile;
-import com.hsm.account.repository.UserProfileRepository;
-import com.hsm.account.repository.UserRepository;
+import com.hsm.account.service.AccountService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,15 +15,15 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
+import org.slf4j.Logger; import org.slf4j.LoggerFactory;
 
 @Component
 public class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
-  private final UserRepository users; private final UserProfileRepository profiles;
+  private static final Logger log=LoggerFactory.getLogger(GoogleLoginSuccessHandler.class); private final AccountService accounts;
   private final SessionService sessions; private final String frontendOrigin;
-  public GoogleLoginSuccessHandler(UserRepository users, UserProfileRepository profiles,
+  public GoogleLoginSuccessHandler(AccountService accounts,
       SessionService sessions, @Value("${app.frontend-origin:http://localhost:5173}") String frontendOrigin) {
-    this.users = users; this.profiles = profiles; this.sessions = sessions; this.frontendOrigin = frontendOrigin;
+    this.accounts = accounts; this.sessions = sessions; this.frontendOrigin = frontendOrigin;
   }
   @Override public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
       Authentication authentication) throws IOException, ServletException {
@@ -33,13 +32,8 @@ public class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
     if (email == null || subject == null || email.isBlank() || subject.isBlank()) {
       response.sendRedirect(frontendOrigin + "/login?oauthError=" + encode("Google did not return a verified email address.")); return;
     }
-    User user = users.findByGoogleSubject(subject).orElseGet(() -> users.findByEmailIgnoreCase(email).orElseGet(() -> {
-      User created = new User(); created.setEmail(email.toLowerCase()); created.setGoogleSubject(subject); created.setEmailVerifiedAt(Instant.now());
-      User saved = users.save(created); String localPart = email.substring(0, email.indexOf('@'));
-      profiles.save(new UserProfile(saved, localPart.substring(0, Math.min(80, localPart.length())))); return saved;
-    }));
-    if (user.getGoogleSubject() == null) { user.setGoogleSubject(subject); user.setEmailVerifiedAt(Instant.now()); users.save(user); }
-    response.sendRedirect(frontendOrigin + "/oauth2/callback#token=" + encode(sessions.create(user)));
+    try { User user=accounts.loginWithGoogle(email,subject); response.sendRedirect(frontendOrigin + "/oauth2/callback?token=" + encode(sessions.create(user))); }
+    catch (RuntimeException exception) { log.error("Google login failed while creating session for {}",email,exception); response.sendRedirect(frontendOrigin + "/login?oauthError=" + encode("Google account could not be linked. Please try again.")); }
   }
   private static String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }
 }

@@ -26,7 +26,7 @@ CREATE TABLE users (
     account_role ENUM('USER','ADMIN') NOT NULL DEFAULT 'USER',      -- BR.7
     account_status ENUM('ACTIVE','LOCKED') NOT NULL DEFAULT 'ACTIVE', -- BR.38
     email_verified_at DATETIME NULL,
-    otp_code VARCHAR(10) NULL,                         -- 6-digit OTP (BR.1)
+    otp_code VARCHAR(255) NULL,                       -- BCrypt hash of the 6-digit OTP (BR.1)
     otp_expires_at DATETIME NULL,                      -- valid 5 minutes
     otp_failed_count TINYINT UNSIGNED NOT NULL DEFAULT 0,
     otp_sent_at DATETIME NULL,                         -- resend at most once / 60 s

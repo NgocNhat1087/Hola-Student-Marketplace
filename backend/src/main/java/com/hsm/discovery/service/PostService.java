@@ -5,8 +5,12 @@ import com.hsm.discovery.dto.PostDetailResponse;
 import com.hsm.discovery.dto.PostSummaryResponse;
 import com.hsm.discovery.entity.Post;
 import com.hsm.discovery.repository.PostRepository;
+import com.hsm.discovery.repository.PostImageRepository;
 
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +24,21 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final PostImageRepository postImageRepository;
 
-    public PostService(PostRepository postRepository) {
+    // Constructor Injection
+    public PostService(
+            PostRepository postRepository,
+            PostImageRepository postImageRepository
+    ) {
         this.postRepository = postRepository;
+        this.postImageRepository = postImageRepository;
     }
 
-    // UC14 + UC15
+    // =====================================================
+    // UC14 + UC15: SEARCH, FILTER AND SORT PRODUCTS
+    // =====================================================
+
     @Transactional(readOnly = true)
     public Page<PostSummaryResponse> searchPosts(
             String keyword,
@@ -39,6 +52,7 @@ public class PostService {
             int size
     ) {
 
+        // 1. Validate pagination
         if (page < 0 || size < 1 || size > 100) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -46,54 +60,77 @@ public class PostService {
             );
         }
 
-        if (minPrice != null && minPrice.signum() < 0
-                || maxPrice != null && maxPrice.signum() < 0
-                || minPrice != null && maxPrice != null
-                   && minPrice.compareTo(maxPrice) > 0) {
+        // 2. Validate price range
+        if ((minPrice != null && minPrice.signum() < 0)
+                || (maxPrice != null && maxPrice.signum() < 0)
+                || (minPrice != null && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0)) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid price range"
             );
         }
 
+        // 3. Validate product condition
         if (condition != null && !List.of(
-                "EXCELLENT", "GOOD", "FAIR",
-                "HEAVILY_USED", "NEEDS_REPAIR"
+                "EXCELLENT",
+                "GOOD",
+                "FAIR",
+                "HEAVILY_USED",
+                "NEEDS_REPAIR"
         ).contains(condition)) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid condition"
             );
         }
 
-        String normalizedKeyword = keyword == null
-                || keyword.isBlank()
-                ? null
-                : keyword.trim();
+        // 4. Normalize keyword
+        String normalizedKeyword =
+                keyword == null || keyword.isBlank()
+                        ? null
+                        : keyword.trim();
 
-        Sort sorting = switch (sort) {
+        // 5. Sorting options
+        String sortOption =
+                sort == null || sort.isBlank()
+                        ? "newest"
+                        : sort;
+
+        Sort sorting = switch (sortOption) {
+
             case "price_asc" ->
                     Sort.by("referencePrice").ascending()
-                        .and(Sort.by("id").descending());
+                            .and(Sort.by("id").descending());
+
             case "price_desc" ->
                     Sort.by("referencePrice").descending()
-                        .and(Sort.by("id").descending());
+                            .and(Sort.by("id").descending());
+
             case "views" ->
                     Sort.by("viewCount").descending()
-                        .and(Sort.by("id").descending());
+                            .and(Sort.by("id").descending());
+
             case "newest" ->
                     Sort.by("createdAt").descending()
-                        .and(Sort.by("id").descending());
+                            .and(Sort.by("id").descending());
+
             default -> throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid sort option"
             );
         };
 
+        // 6. Pagination
         Pageable pageable = PageRequest.of(
-                page, size, sorting
+                page,
+                size,
+                sorting
         );
 
+        // 7. Search database and return DTO
         return postRepository.searchPosts(
                 normalizedKeyword,
                 categoryId,
@@ -105,10 +142,14 @@ public class PostService {
         ).map(PostSummaryResponse::from);
     }
 
-    // UC16
+    // =====================================================
+    // UC16: VIEW PRODUCT DETAILS
+    // =====================================================
+
     @Transactional
     public PostDetailResponse getPostDetail(Long postId) {
 
+        // 1. Validate post ID
         if (postId == null || postId <= 0) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -116,12 +157,14 @@ public class PostService {
             );
         }
 
+        // 2. Find product by ID
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Post not found"
                 ));
 
+        // 3. Check approval and visibility
         if (!"APPROVED".equals(post.getApprovalStatus())
                 || !"VISIBLE".equals(post.getDisplayStatus())
                 || post.getExpiresAt() == null
@@ -133,19 +176,26 @@ public class PostService {
             );
         }
 
-        // Tang luot xem
+        // 4. Increase view count
         postRepository.increaseViewCount(postId);
 
-        // Lay danh sach san pham cung danh muc
+        // 5. Get similar products
         List<PostSummaryResponse> similarPosts =
                 postRepository.findSimilarPosts(
                         post.getCategoryId(),
                         postId,
                         PageRequest.of(0, 5)
-                ).getContent().stream()
-                        .map(PostSummaryResponse::from)
-                        .toList();
+                )
+                .getContent()
+                .stream()
+                .map(PostSummaryResponse::from)
+                .toList();
 
+        // 6. Get product images
+        List<String> imageUrls =
+                postImageRepository.findImageUrlsByPostId(postId);
+
+        // 7. Return product details
         return new PostDetailResponse(
                 post.getId(),
                 post.getSellerId(),
@@ -158,6 +208,7 @@ public class PostService {
                 post.getSaleStatus(),
                 post.getViewCount() + 1,
                 post.getCreatedAt(),
+                imageUrls,
                 similarPosts
         );
     }

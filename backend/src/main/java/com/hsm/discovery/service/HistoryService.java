@@ -36,7 +36,7 @@ public class HistoryService {
 
         String value = keyword.trim();
 
-        if (value.length() > 200) {
+        if (value.length() > 255) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Keyword is too long"

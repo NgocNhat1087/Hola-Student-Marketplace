@@ -10,13 +10,13 @@ public class SearchHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "search_id")
+    @Column(name = "search_history_id")
     private Long id;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "keyword", nullable = false, length = 200)
+    @Column(name = "keyword", nullable = false, length = 255)
     private String keyword;
 
     @Column(name = "searched_at")

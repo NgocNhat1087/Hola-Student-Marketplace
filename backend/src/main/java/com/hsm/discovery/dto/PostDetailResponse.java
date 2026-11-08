@@ -17,6 +17,7 @@ public record PostDetailResponse(
         String saleStatus,
         Long viewCount,
         LocalDateTime createdAt,
+        List<String> imageUrls,
         List<PostSummaryResponse> similarPosts
 ) {
 }

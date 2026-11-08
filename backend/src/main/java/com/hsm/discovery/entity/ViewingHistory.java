@@ -10,7 +10,7 @@ public class ViewingHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "viewing_id")
+    @Column(name = "viewing_history_id")
     private Long id;
 
     @Column(name = "user_id", nullable = false)

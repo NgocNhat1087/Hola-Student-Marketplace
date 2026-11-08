@@ -28,7 +28,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, credentials: 'include' });
   const text = await response.text();
   let data: T | ApiError | null = null;
   if (text) {
@@ -47,6 +47,8 @@ export const authApi = {
   resendOtp: (email: string) => request<void>('/api/auth/resend-otp', { method: 'POST', body: JSON.stringify({ email }) }),
   login: (email: string, password: string) => request<{ user: User; token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
+  forgotPassword: (email: string) => request<{ message: string }>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) => request<{ message: string }>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
 };
 
 export const profileApi = {

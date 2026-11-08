@@ -13,12 +13,15 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class SessionService {
   private static final Duration SESSION_TTL = Duration.ofHours(1);
   private final UserRepository users;
   private final byte[] secret;
+  private final Map<String, Long> revokedTokens = new ConcurrentHashMap<>();
 
   public SessionService(UserRepository users,
       @Value("${app.session-secret:dev-only-change-this-session-secret}") String sessionSecret) {
@@ -35,6 +38,9 @@ public class SessionService {
 
   public User require(String token) {
     if (token == null || token.isBlank()) throw unauthenticated();
+    long now = Instant.now().getEpochSecond();
+    revokedTokens.entrySet().removeIf(entry -> entry.getValue() <= now);
+    if (revokedTokens.containsKey(token)) throw unauthenticated();
     String[] parts = token.split("\\.", -1);
     if (parts.length != 2 || !MessageDigest.isEqual(sign(parts[0]), decode(parts[1]))) {
       throw unauthenticated();
@@ -44,7 +50,7 @@ public class SessionService {
     try {
       long userId = Long.parseLong(values[0]);
       long expiresAt = Long.parseLong(values[1]);
-      if (Instant.now().getEpochSecond() >= expiresAt) throw unauthenticated();
+      if (now >= expiresAt) throw unauthenticated();
       return users.findById(userId).orElseThrow(SessionService::unauthenticated);
     } catch (NumberFormatException exception) {
       throw unauthenticated();
@@ -52,7 +58,8 @@ public class SessionService {
   }
 
   public void remove(String token) {
-    // Stateless signed tokens expire automatically.
+    if (token == null || token.isBlank()) return;
+    revokedTokens.put(token, Instant.now().plus(SESSION_TTL).getEpochSecond());
   }
 
   private byte[] sign(String value) {
@@ -80,4 +87,5 @@ public class SessionService {
   private static ApiException unauthenticated() {
     return new ApiException(401, "UNAUTHENTICATED", "Authentication is required.");
   }
+
 }

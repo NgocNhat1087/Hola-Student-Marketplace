@@ -45,7 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     async logout() {
-      try { await authApi.logout(); } finally { clearToken(); setUser(null); }
+      try { await authApi.logout(); } catch { /* An expired session is already logged out. */ }
+      clearToken();
+      setUser(null);
     },
   }), [loading, user]);
 

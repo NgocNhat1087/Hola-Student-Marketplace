@@ -32,7 +32,12 @@ public class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
     if (email == null || subject == null || email.isBlank() || subject.isBlank()) {
       response.sendRedirect(frontendOrigin + "/login?oauthError=" + encode("Google did not return a verified email address.")); return;
     }
-    try { User user=accounts.loginWithGoogle(email,subject); response.sendRedirect(frontendOrigin + "/oauth2/callback?token=" + encode(sessions.create(user))); }
+    try {
+      User user = accounts.loginWithGoogle(email, subject);
+      String token = sessions.create(user);
+      log.info("Google OAuth account linked for {}, redirecting with session token length {}", email, token.length());
+      response.sendRedirect(frontendOrigin + "/oauth2/callback?token=" + encode(token));
+    }
     catch (RuntimeException exception) { log.error("Google login failed while creating session for {}",email,exception); response.sendRedirect(frontendOrigin + "/login?oauthError=" + encode("Google account could not be linked. Please try again.")); }
   }
   private static String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }

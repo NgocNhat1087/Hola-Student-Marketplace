@@ -23,7 +23,10 @@ public class SecurityConfig {
             .anyRequest().permitAll())
         .addFilterBefore(sessionFilter, UsernamePasswordAuthenticationFilter.class);
     if (!googleClientId.isBlank() && !googleClientId.equalsIgnoreCase("change-me")) {
-      base.oauth2Login(o -> o.successHandler(googleSuccess).failureHandler(googleFailure));
+      base.oauth2Login(o -> o
+          // The custom handler creates the application session and redirects to the frontend callback.
+          .successHandler(googleSuccess)
+          .failureHandler(googleFailure));
     }
     return base.build();
   }

@@ -1,0 +1,3 @@
+export function Field({ label, name, type = 'text', placeholder, value, onChange, required = false, minLength, maxLength }: { label: string; name: string; type?: string; placeholder?: string; value?: string; onChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void; required?: boolean; minLength?: number; maxLength?: number }) {
+  return <label className="field"><span>{label}</span>{type === 'textarea' ? <textarea name={name} placeholder={placeholder} value={value} onChange={onChange} required={required} maxLength={maxLength} /> : <input name={name} type={type} placeholder={placeholder} value={value} onChange={onChange} required={required} minLength={minLength} maxLength={maxLength} />}</label>;
+}

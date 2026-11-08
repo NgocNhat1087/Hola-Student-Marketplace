@@ -1,0 +1,43 @@
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { adminApi } from '../services/adminApi';
+import type { AdminTab } from '../services/adminApi';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+
+const tabs: Array<[AdminTab,string]> = [['posts','UC34 · Posts'],['reports','UC35 · Reports'],['complaints','UC36 · Complaints'],['users','UC37 · Users'],['payments','UC38 · Reconciliation'],['banks','UC39 · Bank accounts']];
+type AnyRecord = Record<string, unknown>;
+const display = (v: unknown): string => v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+const read = (r: AnyRecord, key: string) => display(r[key]);
+function RecordGrid({rows, act}: {rows: AnyRecord[];act?: (row: AnyRecord) => ReactNode}) {
+  if (!rows.length) return <p className="admin-empty">No records found.</p>;
+  const cols = Object.keys(rows[0]).slice(0,8);
+  return <div className="admin-table-wrap"><table className="admin-table"><thead><tr>{cols.map(k=><th key={k}>{k.replaceAll('_',' ')}</th>)}{act && <th>Action</th>}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{cols.map(k=><td key={k} title={read(r,k)}>{read(r,k)}</td>)}{act && <td>{act(r)}</td>}</tr>)}</tbody></table></div>;
+}
+const items = (x: unknown): AnyRecord[] => Array.isArray(x) ? x as AnyRecord[] : [];
+export function AdminPage() {
+  const {user,loading} = useAuth();
+  const [tab,setTab] = useState<AdminTab>('posts');
+  const [data,setData] = useState<any>(null);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [success,setSuccess]=useState('');
+  const [search,setSearch]=useState('');
+  const [form,setForm]=useState({bankName:'',accountNumber:'',accountHolder:''});
+  const refresh = useCallback(async()=>{setError('');try {setData(await adminApi.list(tab,search));}catch(e){setError((e as Error).message);}},[tab,search]);
+  useEffect(()=>{if(user?.role==='ADMIN')void refresh();},[refresh,user?.role]);
+  async function run(operation:()=>Promise<unknown>){setBusy(true);setError('');setSuccess('');try{await operation();setSuccess('Action completed.');await refresh();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  const input=(question: string, required=true): string|null=>{const value=window.prompt(question);if(value===null || (required&&!value.trim()))return null;return value.trim();};
+  function decide(endpoint: string,action:string,requiresReason=false){const reason=requiresReason?input('Enter the reason:'):'';if(requiresReason&&reason===null)return;if(!window.confirm(`Confirm ${action}?`))return;void run(()=>adminApi.post(endpoint,{action,reason}));}
+  if(loading)return <main className="container admin-main">Loading...</main>;
+  if(user?.role!=='ADMIN')return <main className="container admin-main"><h1>Administrator access only</h1><p>This area is restricted to administrator accounts.</p><Link to="/">Return home</Link></main>;
+  return <div className="container admin-main"><div className="admin-heading"><div><p className="admin-kicker">HOLA STUDENT MARKETPLACE</p><h1>System administration</h1><p>Moderation, users, payments and bank accounts</p></div><button className="button" onClick={()=>void refresh()} disabled={busy}>Refresh</button></div>
+    <div className="admin-tabs" role="tablist">{tabs.map(([key,label])=><button role="tab" aria-selected={tab===key} className={tab===key?'admin-tab active':'admin-tab'} key={key} onClick={()=>{setTab(key);setData(null);setSuccess('');}}>{label}</button>)}</div>
+    {error&&<div role="alert" className="alert alert-error">{error}</div>}{success&&<div role="status" className="alert">{success}</div>}
+    {tab==='posts'&&<section><h2>Pending posts</h2><RecordGrid rows={items(data?.posts)} act={r=><div className="admin-actions"><button disabled={busy} onClick={()=>decide(`/posts/items/${r.id}/decision`,'APPROVE')}>Approve</button><button disabled={busy} onClick={()=>decide(`/posts/items/${r.id}/decision`,'REJECT',true)}>Reject</button></div>}/><h2>Pending edits</h2><RecordGrid rows={items(data?.edits)} act={r=><div className="admin-actions"><button disabled={busy} onClick={()=>decide(`/posts/edits/${r.id}/decision`,'APPROVE')}>Approve edit</button><button disabled={busy} onClick={()=>decide(`/posts/edits/${r.id}/decision`,'REJECT',true)}>Reject edit</button></div>}/></section>}
+    {tab==='reports'&&<section><h2>Violation reports</h2><RecordGrid rows={items(data)} act={r=>read(r,'report_status')==='PENDING'?<div className="admin-actions"><button disabled={busy} onClick={()=>decide(`/reports/${r.report_id}/decision`,'REMOVE',true)}>Remove post</button><button disabled={busy} onClick={()=>decide(`/reports/${r.report_id}/decision`,'DISMISS',true)}>Dismiss</button></div>:null}/></section>}
+    {tab==='complaints'&&<section><h2>Transaction complaints</h2><RecordGrid rows={items(data)} act={r=>read(r,'complaint_status')==='PENDING'?<button disabled={busy} onClick={()=>{const decision=input('Complaint decision:');if(!decision)return;const reason=input('Reason:');if(!reason)return;const orderOutcome=input('If this order is frozen, optionally type COMPLETED or CANCELLED. Otherwise leave empty.',false);if(orderOutcome===null)return;void run(()=>adminApi.post(`/complaints/${r.complaint_id}/decision`,{decision,reason,orderOutcome}));}}>Resolve</button>:null}/></section>}
+    {tab==='users'&&<section><h2>User management</h2><label>Search by email or ID <input className="admin-input" value={search} onChange={e=>setSearch(e.target.value)}/></label><RecordGrid rows={items(data)} act={r=><div className="admin-actions">{(['WARN','LOCK','UNLOCK'] as const).map(a=><button key={a} disabled={busy||read(r,'role')==='ADMIN'} onClick={()=>decide(`/users/${r.id}/sanction`,a,a!=='UNLOCK')}>{a}</button>)}<button disabled={busy} onClick={()=>void run(async()=>{const response=await adminApi.get(`/users/${r.id}/frozen-orders`);setSuccess(JSON.stringify(response,null,2));})}>Frozen orders</button></div>}/><h3>Resolve frozen order</h3><p>Use the order ID from “Frozen orders”. Admin can close a frozen confirmed order as Completed or Cancelled.</p><button disabled={busy} onClick={()=>{const id=input('Frozen order ID:');if(!id)return;const action=input('COMPLETED or CANCELLED:');if(!action)return;decide(`/orders/${id}/resolve-frozen`,action,true);}}>Resolve frozen order</button></section>}
+    {tab==='payments'&&<section><h2>Reconciliation queue</h2><h3>Incoming funds</h3><RecordGrid rows={items(data?.funds)} act={r=><button disabled={busy} onClick={()=>{const action=input('Action: ASSIGN, ACTIVATE or REFUND');if(!action)return;const reason=input('Reason:');if(!reason)return;const transactionId=action==='REFUND'?null:input('Boost transaction ID:');if(action!=='REFUND'&&!transactionId)return;const refundReference=action==='REFUND'?input('Actual refund reference:'):null;if(action==='REFUND'&&!refundReference)return;void run(()=>adminApi.post(`/payments/funds/${r.fund_id}/reconcile`,{action,reason,transactionId:transactionId?Number(transactionId):null,refundReference}));}}>Reconcile</button>}/><h3>Pending reconciliation transactions</h3><RecordGrid rows={items(data?.transactions)}/></section>}
+    {tab==='banks'&&<section><h2>Receiving bank accounts</h2><RecordGrid rows={items(data)} act={r=><div className="admin-actions"><button disabled={busy} onClick={()=>{const bankName=input('Bank name:',false);if(bankName===null)return;const accountNumber=input('Account number:',false);if(accountNumber===null)return;const accountHolder=input('Holder name:',false);if(accountHolder===null)return;void run(()=>adminApi.put(`/bank-accounts/${r.id}`,{bankName,accountNumber,accountHolder}));}}>Edit</button><button disabled={busy} onClick={()=>void run(()=>adminApi.post(`/bank-accounts/${r.id}/enabled`,{enabled:!Boolean(r.is_enabled)}))}>{Boolean(r.is_enabled)?'Disable':'Enable'}</button></div>}/><h3>Add receiving account</h3><form className="admin-bank-form" onSubmit={e=>{e.preventDefault();void run(async()=>{await adminApi.post('/bank-accounts',form);setForm({bankName:'',accountNumber:'',accountHolder:''});});}}><input required placeholder="Bank name" value={form.bankName} onChange={e=>setForm({...form,bankName:e.target.value})}/><input required pattern="[0-9]{6,30}" placeholder="Account number (6–30 digits)" value={form.accountNumber} onChange={e=>setForm({...form,accountNumber:e.target.value})}/><input required placeholder="Account holder" value={form.accountHolder} onChange={e=>setForm({...form,accountHolder:e.target.value})}/><button className="button" disabled={busy}>Add account</button></form></section>}
+  </div>;
+}

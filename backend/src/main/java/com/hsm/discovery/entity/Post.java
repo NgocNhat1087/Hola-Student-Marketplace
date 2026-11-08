@@ -4,6 +4,7 @@ package com.hsm.discovery.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.hsm.discovery.enums.*;
 
 @Entity
 @Table(name = "posts")
@@ -32,17 +33,21 @@ public class Post {
     @Column(name = "reference_price", precision = 12, scale = 2)
     private BigDecimal referencePrice;
 
-    @Column(name = "condition_status", nullable = false)
-    private String conditionStatus;
+    @Enumerated(EnumType.STRING)
+@Column(name = "condition_status", nullable = false)
+private ConditionStatus conditionStatus;
 
-    @Column(name = "approval_status", nullable = false)
-    private String approvalStatus;
+   @Enumerated(EnumType.STRING)
+@Column(name = "approval_status", nullable = false)
+private ApprovalStatus approvalStatus;
 
-    @Column(name = "sale_status", nullable = false)
-    private String saleStatus;
+    @Enumerated(EnumType.STRING)
+@Column(name = "sale_status", nullable = false)
+private SaleStatus saleStatus;
 
-    @Column(name = "display_status", nullable = false)
-    private String displayStatus;
+    @Enumerated(EnumType.STRING)
+@Column(name = "display_status", nullable = false)
+private DisplayStatus displayStatus;
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
@@ -93,21 +98,21 @@ public class Post {
         return referencePrice;
     }
 
-    public String getConditionStatus() {
-        return conditionStatus;
-    }
+    public ConditionStatus getConditionStatus() {
+    return conditionStatus;
+}
 
-    public String getApprovalStatus() {
-        return approvalStatus;
-    }
+public ApprovalStatus getApprovalStatus() {
+    return approvalStatus;
+}
 
-    public String getSaleStatus() {
-        return saleStatus;
-    }
+public SaleStatus getSaleStatus() {
+    return saleStatus;
+}
 
-    public String getDisplayStatus() {
-        return displayStatus;
-    }
+public DisplayStatus getDisplayStatus() {
+    return displayStatus;
+}
 
     public LocalDateTime getExpiresAt() {
         return expiresAt;

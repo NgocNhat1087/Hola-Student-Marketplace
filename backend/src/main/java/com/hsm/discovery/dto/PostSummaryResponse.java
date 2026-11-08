@@ -20,7 +20,7 @@ public record PostSummaryResponse(
                 post.getId(),
                 post.getTitle(),
                 post.getReferencePrice(),
-                post.getConditionStatus(),
+                post.getConditionStatus().name(),
                 post.getCategoryId(),
                 post.getAreaId(),
                 post.getViewCount(),

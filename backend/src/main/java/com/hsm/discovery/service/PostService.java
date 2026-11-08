@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.hsm.discovery.enums.*;
+
 import com.hsm.discovery.repository.PostDetailQueryRepository;
 import com.hsm.discovery.dto.SellerInfoResponse;
 import com.hsm.discovery.dto.PostCommentResponse;
@@ -188,8 +190,8 @@ if (normalizedKeyword == null) {
                 ));
 
         // 3. Check approval and visibility
-        if (!"APPROVED".equals(post.getApprovalStatus())
-                || !"VISIBLE".equals(post.getDisplayStatus())
+        if (post.getApprovalStatus() != ApprovalStatus.APPROVED
+        || post.getDisplayStatus() != DisplayStatus.VISIBLE
                 || post.getExpiresAt() == null
                 || !post.getExpiresAt().isAfter(LocalDateTime.now())) {
 
@@ -235,8 +237,8 @@ if (normalizedKeyword == null) {
         post.getTitle(),
         post.getDescription(),
         post.getReferencePrice(),
-        post.getConditionStatus(),
-        post.getSaleStatus(),
+        post.getConditionStatus().name(),
+        post.getSaleStatus().name(),
         post.getViewCount() + 1,
         post.getCreatedAt(),
         imageUrls,

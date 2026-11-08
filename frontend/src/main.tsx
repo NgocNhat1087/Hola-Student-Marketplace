@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { AuthLayout } from './layouts/AuthLayout';
 import { AuthPage } from './pages/AuthPage';
 import { HomePage } from './pages/HomePage';
+import { AdminPage } from './pages/AdminPage';
 import { EditProfilePage, ProfilePage } from './pages/ProfilePages';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
@@ -15,6 +16,7 @@ import './styles.css';
 createRoot(document.getElementById('root')!).render(<AuthProvider><BrowserRouter><Routes>
   <Route element={<AppShell />}>
     <Route index element={<HomePage />} />
+    <Route path="admin" element={<AdminPage />} />
     <Route path="profile/:id" element={<ProfilePage />} />
     <Route element={<ProtectedRoute />}><Route path="profile" element={<ProfilePage />} /><Route path="profile/edit" element={<EditProfilePage />} /><Route path="change-password" element={<ChangePasswordPage />} /></Route>
   </Route>

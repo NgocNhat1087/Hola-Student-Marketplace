@@ -18,6 +18,8 @@ public record PostDetailResponse(
         Long viewCount,
         LocalDateTime createdAt,
         List<String> imageUrls,
+        SellerInfoResponse seller,
+        List<PostCommentResponse> comments,
         List<PostSummaryResponse> similarPosts
 ) {
 }

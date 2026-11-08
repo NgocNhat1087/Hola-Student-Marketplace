@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.hsm.discovery.repository.PostDetailQueryRepository;
+import com.hsm.discovery.dto.SellerInfoResponse;
+import com.hsm.discovery.dto.PostCommentResponse;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,16 +28,18 @@ import java.util.List;
 public class PostService {
 
     private final PostRepository postRepository;
-    private final PostImageRepository postImageRepository;
+private final PostImageRepository postImageRepository;
+private final PostDetailQueryRepository detailQueryRepository;
 
-    // Constructor Injection
-    public PostService(
-            PostRepository postRepository,
-            PostImageRepository postImageRepository
-    ) {
-        this.postRepository = postRepository;
-        this.postImageRepository = postImageRepository;
-    }
+public PostService(
+        PostRepository postRepository,
+        PostImageRepository postImageRepository,
+        PostDetailQueryRepository detailQueryRepository
+) {
+    this.postRepository = postRepository;
+    this.postImageRepository = postImageRepository;
+    this.detailQueryRepository = detailQueryRepository;
+}
 
     // =====================================================
     // UC14 + UC15: SEARCH, FILTER AND SORT PRODUCTS
@@ -93,6 +99,22 @@ public class PostService {
                         ? null
                         : keyword.trim();
 
+                        // UC14: Find posts matching tags
+List<Long> tagPostIds;
+
+if (normalizedKeyword == null) {
+    tagPostIds = List.of(-1L);
+} else {
+    tagPostIds = postRepository.findPostIdsByTagKeyword(
+            normalizedKeyword
+    );
+
+    // Avoid passing an empty collection to JPQL IN
+    if (tagPostIds.isEmpty()) {
+        tagPostIds = List.of(-1L);
+    }
+}
+
         // 5. Sorting options
         String sortOption =
                 sort == null || sort.isBlank()
@@ -132,14 +154,15 @@ public class PostService {
 
         // 7. Search database and return DTO
         return postRepository.searchPosts(
-                normalizedKeyword,
-                categoryId,
-                areaId,
-                condition,
-                minPrice,
-                maxPrice,
-                pageable
-        ).map(PostSummaryResponse::from);
+        normalizedKeyword,
+        tagPostIds,
+        categoryId,
+        areaId,
+        condition,
+        minPrice,
+        maxPrice,
+        pageable
+).map(PostSummaryResponse::from);
     }
 
     // =====================================================
@@ -195,21 +218,31 @@ public class PostService {
         List<String> imageUrls =
                 postImageRepository.findImageUrlsByPostId(postId);
 
+        // Get seller public information
+        SellerInfoResponse seller =
+        detailQueryRepository.findSeller(post.getSellerId());
+
+        // Get public comments
+        List<PostCommentResponse> comments =
+        detailQueryRepository.findComments(postId);
+
         // 7. Return product details
-        return new PostDetailResponse(
-                post.getId(),
-                post.getSellerId(),
-                post.getCategoryId(),
-                post.getAreaId(),
-                post.getTitle(),
-                post.getDescription(),
-                post.getReferencePrice(),
-                post.getConditionStatus(),
-                post.getSaleStatus(),
-                post.getViewCount() + 1,
-                post.getCreatedAt(),
-                imageUrls,
-                similarPosts
-        );
+       return new PostDetailResponse(
+        post.getId(),
+        post.getSellerId(),
+        post.getCategoryId(),
+        post.getAreaId(),
+        post.getTitle(),
+        post.getDescription(),
+        post.getReferencePrice(),
+        post.getConditionStatus(),
+        post.getSaleStatus(),
+        post.getViewCount() + 1,
+        post.getCreatedAt(),
+        imageUrls,
+        seller,
+        comments,
+        similarPosts
+);
     }
 }

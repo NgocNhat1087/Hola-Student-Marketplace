@@ -40,5 +40,9 @@ app:
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
 
 server:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
   error:
     include-message: never

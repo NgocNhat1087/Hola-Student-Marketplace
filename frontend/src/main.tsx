@@ -6,16 +6,19 @@ import { AuthProvider } from './context/AuthContext';
 import { AuthLayout } from './layouts/AuthLayout';
 import { AuthPage } from './pages/AuthPage';
 import { HomePage } from './pages/HomePage';
+import { AdminPage } from './pages/AdminPage';
 import { EditProfilePage, ProfilePage } from './pages/ProfilePages';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(<AuthProvider><BrowserRouter><Routes>
   <Route element={<AppShell />}>
     <Route index element={<HomePage />} />
+    <Route path="admin" element={<AdminPage />} />
     <Route path="profile/:id" element={<ProfilePage />} />
-    <Route element={<ProtectedRoute />}><Route path="profile" element={<ProfilePage />} /><Route path="profile/edit" element={<EditProfilePage />} /></Route>
+    <Route element={<ProtectedRoute />}><Route path="profile" element={<ProfilePage />} /><Route path="profile/edit" element={<EditProfilePage />} /><Route path="change-password" element={<ChangePasswordPage />} /></Route>
   </Route>
   <Route element={<AuthLayout />}><Route path="login" element={<AuthPage mode="login" />} /><Route path="register" element={<AuthPage mode="register" />} /><Route path="verify-otp" element={<AuthPage mode="verify" />} /><Route path="verify-email" element={<Navigate to="/verify-otp" replace />} /></Route>
   <Route element={<AuthLayout />}><Route path="forgot-password" element={<ForgotPasswordPage />} /><Route path="reset-password" element={<ResetPasswordPage />} /></Route>

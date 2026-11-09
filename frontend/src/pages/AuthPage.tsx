@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert } from '../components/Alert';
-import { authApi, API_BASE_URL, ApiRequestError } from '../services/api';
+import { authApi, ApiRequestError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 function Frame({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) { return <div className="auth-form-wrap"><p className="eyebrow">Welcome to Hola</p><h1>{title}</h1><p className="auth-subtitle">{subtitle}</p>{children}</div>; }
 function PasswordField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) { const [visible, setVisible] = useState(false); return <label className="field"><span>{label}</span><span className="input-with-action"><input name={label} type={visible ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} minLength={8} required /><button type="button" className="input-action" aria-label={visible ? 'Hide password' : 'Show password'} onClick={() => setVisible(!visible)}>{visible ? 'Hide' : 'Show'}</button></span></label>; }
-function GoogleButton() { return <><a className="google-button" href={`${API_BASE_URL}/oauth2/authorization/google`}><span className="google-g">G</span> Continue with Google</a><p className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></p></>; }
+function GoogleButton() { return <p className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></p>; }
 function apiError(error: unknown, fallback: string) { if (!(error instanceof ApiRequestError)) return error instanceof Error ? error.message : fallback; const messages: Record<string, string> = { EMAIL_REGISTERED: 'This email is already registered. Please log in instead.', INVALID_OTP: 'That code is invalid or expired. Request a new code and try again.', OTP_COOLDOWN: 'A new code was sent recently. Please wait 60 seconds before resending.', ACCOUNT_NOT_FOUND: 'No account was found for this email.', ALREADY_VERIFIED: 'This email is already verified. Please log in.', INVALID_CREDENTIALS: 'The email or password is incorrect.', ACCOUNT_LOCKED: 'This account is temporarily locked after too many failed attempts. Please try again later.', EMAIL_NOT_VERIFIED: 'Please verify your email before logging in.' }; return messages[error.code] || error.message || fallback; }
 function validateEmail(email: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 function validatePassword(password: string) { return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password); }
